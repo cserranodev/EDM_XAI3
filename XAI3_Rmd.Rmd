@@ -1,0 +1,102 @@
+---
+title: "XAI 3"
+author: "Adrián Castillo Portoles & Carlos Serrano Esteve"
+date: "2025-05-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Exercise 1: One dimensional Partial Dependence Plot.
+The partial dependence plot shows the marginal effect of a feature on the predicted 
+
+```{r}
+# load libraries
+library(randomForest)
+library(pdp)
+library(ggplot2)
+library(readr)
+
+# Load bike rental dataset
+bike_data <- read_csv("data/day_cleaned_full.csv")
+
+# Fit a random forest model to predict total rentals
+set.seed(123)
+rf_bike_model <- randomForest(cnt ~ ., data = bike_data, ntree = 200, importance = TRUE)
+
+# Selected features for 1D PDPs
+selected_features <- c("days_since_2011", "temp", "hum", "windspeed")
+
+# Plot 1D Partial Dependence Plots
+par(mfrow = c(2, 2))
+for (feature in selected_features) {
+  pd <- partial(rf_bike_model, pred.var = feature, train = bike_data)
+  plot(pd,
+       main = paste("PDP for", feature),
+       xlab = feature,
+       ylab = "Predicted rental count")
+}
+```
+
+# Exercise 2: Bidimensional Partial Dependency Plot.
+
+
+```{r}
+# Take a random sample from the bike dataset to reduce computation
+set.seed(42)
+bike_sample <- bike_data[sample(nrow(bike_data), 250), ]
+
+# Train a new random forest model on the sampled data
+rf_bike_model_sampled <- randomForest(cnt ~ ., data = bike_sample, ntree = 200)
+
+# Generate a 2D Partial Dependence Plot for humidity and temperature
+pdp_bike_2d <- partial(rf_bike_model_sampled, pred.var = c("hum", "temp"), grid.resolution = 20)
+
+# Visualize the 2D PDP using ggplot2
+ggplot(pdp_bike_2d, aes(x = hum, y = temp, fill = yhat)) +
+  geom_tile(width = 0.03, height = 0.03) +
+  scale_fill_viridis_c() +
+  labs(title = "2D PDP: Humidity & Temperature",
+       x = "Humidity",
+       y = "Temperature",
+       fill = "Predicted Rentals") +
+  theme_minimal()
+```
+
+# Exercise 3: PDP to explain the price of a house.
+
+```{r}
+# Load house price dataset
+house_data <- read_csv("data/kc_house_data.csv")
+
+# Select relevant columns
+house_features <- house_data[, c("price", "bedrooms", "bathrooms", "sqft_living", "sqft_lot", "floors", "yr_built")]
+
+# Sample a subset to reduce computation
+set.seed(42)
+house_sample <- house_features[sample(nrow(house_features), 500), ]
+
+# Train a random forest model to predict house price
+rf_house_model <- randomForest(price ~ ., data = house_sample, ntree = 200)
+
+# Define key variables to explore with PDPs
+key_vars <- c("bedrooms", "bathrooms", "sqft_living", "floors")
+
+# Plot 1D PDPs for selected house features
+par(mfrow = c(2, 2))
+for (var in key_vars) {
+  pd <- partial(rf_house_model, pred.var = var, train = house_sample)
+  plot(pd,
+       main = paste("PDP for", var),
+       xlab = var,
+       ylab = "Predicted Price")
+}
+
+```
+
+
+
+
